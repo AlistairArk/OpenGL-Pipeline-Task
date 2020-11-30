@@ -280,6 +280,7 @@ class FakeGL
 
     // sets the normal vector
     void Normal3f(float x, float y, float z);
+    Cartesian3 normal3f;
 
     // sets the texture coordinates
     void TexCoord2f(float u, float v);
@@ -307,6 +308,11 @@ class FakeGL
 
     // sets properties for the one and only light
     void Light(int parameterName, const float *parameterValues);
+    float lightPositionValues[8];
+    float lightAmbientValues[8];
+    float lightDiffuseValues[8];
+    float lightAmbientAndDiffuseValues[8];
+    float lightSpecularValues[8];
 
     //-------------------------------------------------//
     //                                                 //

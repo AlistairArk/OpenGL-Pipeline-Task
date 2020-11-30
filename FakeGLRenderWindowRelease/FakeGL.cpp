@@ -51,22 +51,21 @@ void FakeGL::Begin(unsigned int PrimitiveType)
             Taking $n$ as an integer count starting at one, and $N$ as the total
             number of verticies specified, the interpretations are as follows.
         */
-        std::cout << "------------------------------------------" << std::endl;
-        std::cout << " Begin (" << PrimitiveType << ")" << std::endl;
+
 
         switch(PrimitiveType)
         {
             // Treats each vertex as a single point.
             // Vertex $n$ defines point $n$. $N$ points are drawn.
             case FAKEGL_POINTS:
-                std::cout << "      primitiveType = FAKEGL_POINTS" << std::endl;
+                // std::cout << "      primitiveType = FAKEGL_POINTS" << std::endl;
                 primitiveType = FAKEGL_POINTS;
                 break;
 
             // Treats each pair of verticies as an independent line segment.
             // Verticies $2n^-^1$ and $2n$ define line $n$. $N/2$ lines are drawn.
             case FAKEGL_LINES:
-                std::cout << "      primitiveType = FAKEGL_LINES" << std::endl;
+                // std::cout << "      primitiveType = FAKEGL_LINES" << std::endl;
                 primitiveType = FAKEGL_LINES;
                 break;
 
@@ -74,7 +73,7 @@ void FakeGL::Begin(unsigned int PrimitiveType)
             // Verticies $3n^-^2$, $3n^-^1$, and $3n$ define triangle $n$.
             // $N/3$ triangles are drawn.
             case FAKEGL_TRIANGLES:
-                std::cout << "      primitiveType = FAKEGL_TRIANGLES" << std::endl;
+                // std::cout << "      primitiveType = FAKEGL_TRIANGLES" << std::endl;
                 primitiveType = FAKEGL_TRIANGLES;
                 break;
 
@@ -86,9 +85,9 @@ void FakeGL::Begin(unsigned int PrimitiveType)
 void FakeGL::End()
     { // End()
 
-        std::cout << "------------------------------------------" << std::endl;
-        std::cout << " End ()" << std::endl;
-
+        // Clear the raster and vertex queues here
+        vertexQueue.clear();
+        rasterQueue.clear();
 
         primitiveType = 0; // Set primitiveType back to zero
 
@@ -97,20 +96,16 @@ void FakeGL::End()
 // sets the size of a point for drawing
 void FakeGL::PointSize(float size)
     { // PointSize()
-        pointSize = size;
 
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " PointSize (" << size << ")" << std::endl;
+        pointSize = size;
 
     } // PointSize()
 
 // sets the width of a line for drawing purposes
 void FakeGL::LineWidth(float width)
     { // LineWidth()
-        lineWidth = width;
 
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " LineWidth (" << width << ")" << std::endl;
+        lineWidth = width;
 
     } // LineWidth()
 
@@ -152,26 +147,17 @@ void FakeGL::MatrixMode(unsigned int whichMatrix)
                 break;
         }
 
-        std::cout << "------------------------------------------" << std::endl;
-        std::cout << " MatrixMode (" << whichMatrix << ")" << std::endl;
-
     } // MatrixMode()
 
 // pushes a matrix on the stack
 void FakeGL::PushMatrix()
     { // PushMatrix()
 
-        std::cout << "------------------------------------------" << std::endl;
-        std::cout << " PushMatrix ()" << std::endl;
-
     } // PushMatrix()
 
 // pops a matrix off the stack
 void FakeGL::PopMatrix()
     { // PopMatrix()
-
-        std::cout << "------------------------------------------" << std::endl;
-        std::cout << " PopMatrix ()" << std::endl;
 
     } // PopMatrix()
 
@@ -219,7 +205,6 @@ void FakeGL::MultMatrixf(const float *columnMajorCoordinates)
                 matrixMultMatrix[ny][nx] = columnMajorCoordinates[multMatrixIndex];
             }
         }
-
 
         // multiply the current matrix by the one specified in matrixMultMatrix
         matrixCurrent = matrixCurrent*matrixMultMatrix;
@@ -285,6 +270,37 @@ void FakeGL::Rotatef(float angle, float axisX, float axisY, float axisZ)
         // std::cout << "==========================================" << std::endl;
         // std::cout << " Rotatef: ("<< angle << ", " << axisX << ", " << axisY << ")" << std::endl;
 
+        /*
+            PARAMETERS
+               angle
+                   Specifies the angle of rotation, in degrees.
+
+               x, y, z
+                   Specify the x, y, and z coordinates of a vector, respectively.
+
+            DESCRIPTION
+               glRotate produces a rotation of angle degrees around the vector x y z.
+               The current matrix (see glMatrixMode()) is multiplied by a rotation
+               matrix with the product replacing the current matrix, as if
+               glMultMatrix() were called with the following matrix as its argument:
+
+               x 2 <U+2061> 1 - c + c x <U+2062> y <U+2061> 1 - c - z <U+2062> s x
+            <U+2062> z <U+2061> 1 - c + y <U+2062> s 0 y <U+2062> x <U+2061> 1
+               - c + z <U+2062> s y 2 <U+2061> 1 - c + c y <U+2062> z <U+2061> 1 - c - x <U+2062> s 0 x <U+2062> z <U+2061> 1 - c - y <U+2062>
+               s y <U+2062> z <U+2061> 1 - c + x <U+2062> s z 2 <U+2061> 1 - c + c 0 0 0 0 1
+
+               Where c = cos <U+2061> angle, s = sin <U+2061> angle, and x y z = 1 (if not, the GL
+               will normalize this vector).
+
+               If the matrix mode is either GL_MODELVIEW or GL_PROJECTION, all objects
+               drawn after glRotate is called are rotated. Use glPushMatrix() and
+               glPopMatrix() to save and restore the unrotated coordinate system.
+
+            NOTES
+               This rotation follows the right-hand rule, so if the vector x y z
+               points toward the user, the rotation will be counterclockwise.
+        */
+
     } // Rotatef()
 
 // scale the matrix
@@ -293,6 +309,36 @@ void FakeGL::Scalef(float xScale, float yScale, float zScale)
 
         // std::cout << "------------------------------------------" << std::endl;
         // std::cout << " Scalef: ("<< xScale << ", " << yScale << ", " << zScale << ")" << std::endl;
+        /*
+            x, y, z
+                Specify scale factors along the x, y, and z axes, respectively.
+
+            glScale produces a nonuniform scaling along the x, y, and z axes. The
+               three parameters indicate the desired scale factor along each of the
+               three axes.
+
+               The current matrix (see glMatrixMode()) is multiplied by this scale
+               matrix, and the product replaces the current matrix as if
+               glMultMatrix() were called with the following matrix as its argument:
+
+               x 0 0 0 0 y 0 0 0 0 z 0 0 0 0 1
+
+               If the matrix mode is either GL_MODELVIEW or GL_PROJECTION, all objects
+               drawn after glScale is called are scaled.
+
+               Use glPushMatrix() and glPopMatrix() to save and restore the unscaled
+               coordinate system.
+
+        */
+
+        Matrix4 matrixScale;    // Translation Matrix
+
+        matrixScale[0][0] = xScale; matrixScale[1][0] = 0;      matrixScale[2][0] = 0;      matrixScale[3][0] = 0;
+        matrixScale[0][1] = 0;      matrixScale[1][1] = yScale; matrixScale[2][1] = 0;      matrixScale[3][1] = 0;
+        matrixScale[0][2] = 0;      matrixScale[1][2] = 0;      matrixScale[2][2] = zScale; matrixScale[3][2] = 0;
+        matrixScale[0][3] = 0;      matrixScale[1][3] = 0;      matrixScale[2][3] = 0;      matrixScale[3][3] = 1;
+
+        matrixCurrent =  matrixScale*matrixCurrent;
 
     } // Scalef()
 
@@ -315,8 +361,14 @@ void FakeGL::Translatef(float xTranslate, float yTranslate, float zTranslate)
             coordinate system.
         */
 
-        // std::cout << "==========================================" << std::endl;
-        // std::cout << " Translatef: ("<< xTranslate << ", " << yTranslate << ", " << zTranslate << ")" << std::endl;
+        Matrix4 matrixTranslate;    // Translation Matrix
+
+        matrixTranslate[0][0] = 1; matrixTranslate[1][0] = 0; matrixTranslate[2][0] = 0; matrixTranslate[3][0] = xTranslate;
+        matrixTranslate[0][1] = 0; matrixTranslate[1][1] = 1; matrixTranslate[2][1] = 0; matrixTranslate[3][1] = yTranslate;
+        matrixTranslate[0][2] = 0; matrixTranslate[1][2] = 0; matrixTranslate[2][2] = 1; matrixTranslate[3][2] = zTranslate;
+        matrixTranslate[0][3] = 0; matrixTranslate[1][3] = 0; matrixTranslate[2][3] = 0; matrixTranslate[3][3] = 1;
+
+        matrixCurrent =  matrixTranslate*matrixCurrent;
 
     } // Translatef()
 
@@ -357,10 +409,6 @@ void FakeGL::Viewport(int x, int y, int width, int height)
         viewportX = xw;
         viewportY = yw;
 
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " Viewport: ("<< x << ", " << y << ", " << width << ", " << height << ")" << std::endl;
-        // std::cout << "      (viewportX, viewportY): ("<< viewportX << ", " << viewportY << ")" << std::endl;
-        // std::cout << "      (frameBuffer.width, frameBuffer.height): ("<< frameBuffer.width << ", " << frameBuffer.height << ")" << std::endl;
 
     } // Viewport()
 
@@ -382,16 +430,40 @@ void FakeGL::Color3f(float red, float green, float blue)
 void FakeGL::Materialf(unsigned int parameterName, const float parameterValue)
     { // Materialf()
 
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " Materialf ("<< parameterName << ", " << parameterValue << ")" << std::endl;
+        switch(parameterName){
+            case FAKEGL_AMBIENT:
+                break;
+            case FAKEGL_DIFFUSE:
+                break;
+            case FAKEGL_AMBIENT_AND_DIFFUSE:
+                break;
+            case FAKEGL_SPECULAR:
+                break;
+            case FAKEGL_EMISSION:
+                break;
+            case FAKEGL_SHININESS:
+                break;
+        }
 
     } // Materialf()
 
 void FakeGL::Materialfv(unsigned int parameterName, const float *parameterValues)
     { // Materialfv()
 
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " Materialfv ("<< parameterName << ", " << parameterValues << ")" << std::endl;
+        switch(parameterName){
+            case FAKEGL_AMBIENT:
+                break;
+            case FAKEGL_DIFFUSE:
+                break;
+            case FAKEGL_AMBIENT_AND_DIFFUSE:
+                break;
+            case FAKEGL_SPECULAR:
+                break;
+            case FAKEGL_EMISSION:
+                break;
+            case FAKEGL_SHININESS:
+                break;
+        }
 
     } // Materialfv()
 
@@ -399,14 +471,77 @@ void FakeGL::Materialfv(unsigned int parameterName, const float *parameterValues
 void FakeGL::Normal3f(float x, float y, float z)
     { // Normal3f()
 
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " Normal3f ("<< x << ", " << y << ", " << z << ")" << std::endl;
+        normal3f = {x, y, z};
+
+        /*
+            PARAMETERS
+               nx, ny, nz
+                   Specify the x, y, and z coordinates of the new current normal. The
+                   initial value of the current normal is the unit vector, (0, 0, 1).
+
+            PARAMETERS
+            v
+                Specifies a pointer to an array of three elements: the x, y, and z
+                coordinates of the new current normal.
+
+            DESCRIPTION
+                   The current normal is set to the given coordinates whenever glNormal is
+                   issued. Byte, short, or integer arguments are converted to
+                   floating-point format with a linear mapping that maps the most positive
+                   representable integer value to 1.0 and the most negative representable
+                   integer value to -1.0.
+
+                   Normals specified with glNormal need not have unit length. If
+                   GL_NORMALIZE is enabled, then normals of any length specified with
+                   glNormal are normalized after transformation. If GL_RESCALE_NORMAL is
+                   enabled, normals are scaled by a scaling factor derived from the
+                   modelview matrix.  GL_RESCALE_NORMAL requires that the originally
+                   specified normals were of unit length, and that the modelview matrix
+                   contain only uniform scales for proper results. To enable and disable
+                   normalization, call glEnable() and glDisable() with either GL_NORMALIZE
+                   or GL_RESCALE_NORMAL. Normalization is initially disabled.
+
+            NOTES
+                   The current normal can be updated at any time. In particular, glNormal
+                   can be called between a call to glBegin() and the corresponding call to
+                   glEnd().
+
+        */
 
     } // Normal3f()
 
 // sets the texture coordinates
 void FakeGL::TexCoord2f(float u, float v)
     { // TexCoord2f()
+
+        /*
+            PARAMETERS
+                   v
+                       Specifies a pointer to an array of one, two, three, or four
+                       elements, which in turn specify the s, t, r, and q texture
+                       coordinates.
+
+            DESCRIPTION
+                   glTexCoord specifies texture coordinates in one, two, three, or four
+                   dimensions.  glTexCoord1 sets the current texture coordinates to s 0 0
+                   1; a call to glTexCoord2 sets them to s t 0 1. Similarly, glTexCoord3
+                   specifies the texture coordinates as s t r 1, and glTexCoord4 defines
+                   all four components explicitly as s t r q.
+
+                   The current texture coordinates are part of the data that is associated
+                   with each vertex and with the current raster position. Initially, the
+                   values for s, t, r, and q are (0, 0, 0, 1).
+
+            NOTES
+                   The current texture coordinates can be updated at any time. In
+                   particular, glTexCoord can be called between a call to glBegin() and
+                   the corresponding call to glEnd().
+
+                   When the ARB_imaging extension is supported, glTexCoord always updates
+                   texture unit GL_TEXTURE0.
+        */
+
+
     } // TexCoord2f()
 
 // sets the vertex & launches it down the pipeline
@@ -461,11 +596,6 @@ void FakeGL::Disable(unsigned int property)
                 enableDepthTest = false;
                 break;
         }
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " Disable ("<< property << ")" << std::endl;
-        // std::cout << "      FAKEGL_LIGHTING   = " << enableLighting << std::endl;
-        // std::cout << "      FAKEGL_TEXTURE_2D = " << enableTexture2D << std::endl;
-        // std::cout << "      FAKEGL_DEPTH_TEST = " << enableDepthTest << std::endl;
 
     } // Disable()
 
@@ -488,12 +618,6 @@ void FakeGL::Enable(unsigned int property)
                 break;
         }
 
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " Enable ("<< property << ")" << std::endl;
-        // std::cout << "      FAKEGL_LIGHTING   = " << enableLighting << std::endl;
-        // std::cout << "      FAKEGL_TEXTURE_2D = " << enableTexture2D << std::endl;
-        // std::cout << "      FAKEGL_DEPTH_TEST = " << enableDepthTest << std::endl;
-
     } // Enable()
 
 //-------------------------------------------------//
@@ -505,6 +629,33 @@ void FakeGL::Enable(unsigned int property)
 // sets properties for the one and only light
 void FakeGL::Light(int parameterName, const float *parameterValues)
     { // Light()
+
+          /*
+            params
+                Specifies a pointer to the value or values that parameter pname of
+                light source light will be set to.
+
+          */
+        switch(parameterName){
+
+            case FAKEGL_POSITION:
+                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightPositionValues[n] = parameterValues[n];
+                break;
+            case FAKEGL_AMBIENT:
+                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightAmbientValues[n] = parameterValues[n];
+                break;
+            case FAKEGL_DIFFUSE:
+                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightDiffuseValues[n] = parameterValues[n];
+                break;
+            case FAKEGL_AMBIENT_AND_DIFFUSE:
+                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightAmbientAndDiffuseValues[n] = parameterValues[n];
+                break;
+            case FAKEGL_SPECULAR:
+                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightSpecularValues[n] = parameterValues[n];
+                break;
+
+        }
+
     } // Light()
 
 //-------------------------------------------------//
@@ -551,7 +702,7 @@ void FakeGL::Clear(unsigned int mask)
                 frameBuffer[row][col] = bgColour;
 
                 // For each pixel, set the z bugger to -infinity
-                depthBuffer[row][col].alpha = negativeInfinity;
+                depthBuffer[row][col].alpha = 0;
             }
         }
 
@@ -577,9 +728,6 @@ void FakeGL::ClearColor(float red, float green, float blue, float alpha)
 // transform one vertex & shift to the raster queue
 void FakeGL::TransformVertex()
     { // TransformVertex()
-
-        std::cout << "------------------------------------------" << std::endl;
-        std::cout << " TransformVertex () " << std::endl;
 
         vertexWithAttributes vertexCurrent;
         vertexCurrent = vertexQueue.back(); // Get the vertex on the back of the queue
@@ -624,7 +772,7 @@ void FakeGL::TransformVertex()
             while (fragmentQueue.size()>0){
                 ProcessFragment();
             }
-            std::cout << " COMPLETE!" << std::endl;
+
         }
 
 
@@ -644,9 +792,9 @@ bool FakeGL::RasterisePrimitive()
             // Vertex $n$ defines point $n$. $N$ points are drawn.
             case FAKEGL_POINTS:      // Cheack number of vertices on the queue
                 if (rasterQueue.size() == 1){
-                    std::cout << "------------------------------------------" << std::endl;
-                    std::cout << " RasterisePrimitive () " << std::endl;
-                    std::cout << "\tProcessing: FAKEGL_POINTS" << std::endl;
+                    // std::cout << "------------------------------------------" << std::endl;
+                    // std::cout << " RasterisePrimitive () " << std::endl;
+                    // std::cout << "\tProcessing: FAKEGL_POINTS" << std::endl;
 
                     // Send the verticies down the pipeline
                     screenVertexWithAttributes dcs0;
@@ -661,9 +809,7 @@ bool FakeGL::RasterisePrimitive()
             // Verticies $2n^-^1$ and $2n$ define line $n$. $N/2$ lines are drawn.
             case FAKEGL_LINES:       // Cheack number of vertices on the queue
                 if (rasterQueue.size() == 2){
-                    std::cout << "------------------------------------------" << std::endl;
-                    std::cout << " RasterisePrimitive () " << std::endl;
-                    std::cout << "\tProcessing: FAKEGL_LINES" << std::endl;
+
 
                     // Send the verticies down the pipeline
                     screenVertexWithAttributes dcs0;
@@ -674,6 +820,10 @@ bool FakeGL::RasterisePrimitive()
                     dcs1 = rasterQueue.front();
                     rasterQueue.pop_front(); // Pop verticies off the queue
 
+                    std::cout << "------------------------------------------" << std::endl;
+                    std::cout << " RasterisePrimitive () " << std::endl;
+                    std::cout << "\tProcessing: FAKEGL_LINES" << std::endl;
+                    std::cout << dcs0 << dcs1 << std::endl;
                     RasteriseLineSegment(dcs0, dcs1);
 
                     return true;
@@ -685,9 +835,10 @@ bool FakeGL::RasterisePrimitive()
             // $N/3$ triangles are drawn.
             case FAKEGL_TRIANGLES:  // Cheack number of vertices on the queue
                 if (rasterQueue.size() == 3){
-                    std::cout << "------------------------------------------" << std::endl;
-                    std::cout << " RasterisePrimitive () " << std::endl;
-                    std::cout << "\tProcessing: FAKEGL_TRIANGLES" << std::endl;
+                    // std::cout << "------------------------------------------" << std::endl;
+                    // std::cout << " RasterisePrimitive () " << std::endl;
+                    // std::cout << "\tProcessing: FAKEGL_TRIANGLES" << std::endl;
+
                     // Send the verticies down the pipeline
                     screenVertexWithAttributes dcs0;
                     dcs0 = rasterQueue.front();
@@ -718,8 +869,9 @@ bool FakeGL::RasterisePrimitive()
 void FakeGL::RasterisePoint(screenVertexWithAttributes &vertex0)
     { // RasterisePoint()
 
-        std::cout << "------------------------------------------" << std::endl;
-        std::cout << " RasterisePoint () \n"<< vertex0 << std::endl;
+        // std::cout << "------------------------------------------" << std::endl;
+        // std::cout << " RasterisePoint () \n"<< vertex0 << std::endl;
+        std::cout << " FRAGMENT Z \n"<< vertex0.position.z << std::endl;
 
         int x,y;
         x = vertex0.position.x;
@@ -756,13 +908,7 @@ void FakeGL::RasterisePoint(screenVertexWithAttributes &vertex0)
 void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVertexWithAttributes &vertex1)
     { // RasteriseLineSegment()
 
-        std::cout << "------------------------------------------" << std::endl;
-        std::cout << " RasteriseLineSegment () \n"<< vertex0 << vertex1 << std::endl;
-
         // Begin by converting to screenspace co-ordinates
-        int height = frameBuffer.height;
-        int width = frameBuffer.width;
-
         float x1 = vertex0.position.x; // Axis in width
         float y1 = vertex0.position.y; // Axis in height
         float z1 = vertex0.position.z; // Z Depth
@@ -788,16 +934,29 @@ void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVer
         float steps = sqrt(pow(x2-x1,2)+pow(y2-y1,2));   // Distance between points
         float m = (y2 - y1) / (x2 - x1);                 // Gradiant
 
+        std::cout << "m: "<< m << vertex0 << std::endl;
+
+
         for (float i = 0; i < steps; i++) {
+
+            // Iterate over a square around the point
+            int lineWidthH = lineWidth*.5;
+            int lineWidthX = 1;
+            int lineWidthY = 1;
+
             if (m){ // Line is Diagonal or Vertical
                 y = (yDif*(i/steps)) + y2;
                 x = ((yDif*(i/steps)) / m) + x2;
-
             } else { // Line is Horizontal
                 y = y1;
                 x = xDif*(i/steps) + x2;
             }
 
+            if (m<-1 || m >1){ // Check gradiant for line width
+                lineWidthX = lineWidth;
+            }else{
+                lineWidthY = lineWidth;
+            }
 
             // Color interpolation (ternary operation)
             double stepRatio2 = ((steps-i)/steps);
@@ -808,13 +967,9 @@ void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVer
             colour.green = (g1>g2) ? ((g1-g2)*stepRatio)+g2 : ((g2-g1)*stepRatio2)+g1;
             colour.blue  = (b1>b2) ? ((b1-b2)*stepRatio)+b2 : ((b2-b1)*stepRatio2)+b1;
 
-
-            // Iterate over a square around the point
-            // This would need to be modified to draw a line
-            int lineWidthH = lineWidth*.5;
-            for (int xOffset = 0; xOffset < lineWidth; xOffset++)
+            for (int xOffset = 0; xOffset < lineWidthX; xOffset++)
             {
-                for (int yOffset = 0; yOffset < lineWidth; yOffset++)
+                for (int yOffset = 0; yOffset < lineWidthY; yOffset++)
                 {
                     // Convert point to point in the square
                     int x3 = xOffset + x - lineWidthH;
@@ -837,15 +992,50 @@ void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVer
                     }
                 }
             }
+
+            /*
+                This would need to be modified to draw a line
+
+                NOTE TO SELF:
+                    The way we are probably expecded to do is by drawing multiple single width lines in parallel
+                    to one another to create one thick line of an expected length. This can be done rather easily
+                    by making some modifications to the starting algorithm.
+
+                    Optionally, we could keep the code we have now and find a way to make it draw a line at a 180
+                    degree angle to the current line at each point. That sounds a little messy, so consider this.
+                    A width of 5 would just mean drawing 5 lines of size 1 on either side of one another just
+                    one cell apart. My line code here is already perfect for stopping tearing so that shouldn't
+                    be an issue. TEST IT! TRY IT! DO IT!
+
+            */
+
+            // int lineWidthH = lineWidth*.5;
+            // for (int xOffset = 0; xOffset < lineWidth; xOffset++)
+            // {
+            //     for (int yOffset = 0; yOffset < lineWidth; yOffset++)
+            //     {
+            //         // Convert point to point in the square
+            //         int x3 = xOffset + x - lineWidthH;
+            //         int y3 = yOffset + y - lineWidthH;
+            //
+            //         // Calculate Z depth on line using (i/steps) as a ratio for current distance across the line
+            //         float z3 = z2 + (i/steps)*(z1-z2);
+            //
+            //         // If point is within frame buffer
+            //         if (x3>0 && x3< frameBuffer.width && y3>0 && y3< frameBuffer.height)
+            //         {   // Set frameBuffer address in fragment queue
+            //
+            //             fragmentWithAttributes fragment;
+            //             fragment.row = y3;
+            //             fragment.col = x3;
+            //             fragment.z = z3;
+            //             fragment.colour = colour;
+            //
+            //             fragmentQueue.push_back(fragment);
+            //         }
+            //     }
+            // }
         }
-
-
-        // // BASICALLY CALL THE DRAW POINT FUCNTION INSTEAD
-        // // Set start/end points of line
-        // SetPixel(x1,y1,RGBVal(r1,g1,b1));
-        // SetPixel(x2,y2,RGBVal(r2,g2,b2));
-
-
     } // RasteriseLineSegment()
 
 // rasterises a single triangle
@@ -905,11 +1095,13 @@ void FakeGL::RasteriseTriangle(screenVertexWithAttributes &vertex0, screenVertex
 
     // set triangle depthBuffer based on the depth of the triangels center point
     float triangleDepth = (vertex0.position.z+vertex1.position.z+vertex2.position.z)/3;
-    std::cout << "Triangle Z:" << std::endl;
+    // std::cout << "Triangle Z:" << std::endl;
+    std::cout << "====================================" << std::endl;
+    std::cout << "triangleDepth: " << triangleDepth << std::endl;
     std::cout <<  vertex0 << std::endl;
     std::cout <<  vertex1 << std::endl;
     std::cout <<  vertex2 << std::endl;
-    std::cout << rasterFragment.z << std::endl;
+    // std::cout << rasterFragment.z << std::endl;
 
     // loop through the pixels in the bounding box
     for (rasterFragment.row = minY; rasterFragment.row <= maxY; rasterFragment.row++)
@@ -957,17 +1149,19 @@ void FakeGL::ProcessFragment()
         fragmentQueue.pop_front();  // Pop the fragment off the queue
 
 
+
         /* ==== Do Depth Buffering ==== */
         // Note: depthBuffer is a second RGBAImage in which the alpha stores
         // the depth buffer
 
         // As the alpha values are clamped between 0 & 255 half all buffers and
         // add 128 so that it sits within these bounds with headroom
-        currentFragment.z += 128;
+        currentFragment.z = (currentFragment.z*128)+ 128;
+
 
         // For each fragment,
         // IF fragment Z < the depthBuffer depth && enableDepthTest = true THEN
-        if ((currentFragment.z < depthBuffer[currentFragment.row][currentFragment.col].alpha) && enableDepthTest)
+        if ((currentFragment.z < (float)depthBuffer[currentFragment.row][currentFragment.col].alpha) && enableDepthTest)
         {
             // Discard the fragment
             // std::cout <<  "Discard Fragment: " << currentFragment.z  << std::endl;
@@ -983,6 +1177,7 @@ void FakeGL::ProcessFragment()
             RGBAValue bufferColour;
             bufferColour.alpha = currentFragment.z;
             depthBuffer[currentFragment.row][currentFragment.col] = bufferColour;
+
         }
 
 
