@@ -74,6 +74,7 @@ class RenderController : public QObject
     void useLightingCheckChanged(int state);
     void texturedRenderingCheckChanged(int state);
     void textureModulationCheckChanged(int state);
+    void phongShadingCheckChanged(int state);
     void depthTestCheckChanged(int state);
     void showAxesCheckChanged(int state);
     void showObjectCheckChanged(int state);

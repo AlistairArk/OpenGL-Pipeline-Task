@@ -39,6 +39,7 @@ RGBAImage::RGBAImage()
 
 // copy constructor
 RGBAImage::RGBAImage(const RGBAImage &other)
+	: RGBAImage()
     { // copy constructor
     // resize to match the other image
     Resize(other.width, other.height);

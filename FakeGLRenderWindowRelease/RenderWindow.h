@@ -61,6 +61,7 @@ class RenderWindow : public QWidget
     QCheckBox                   *lightingBox;
     QCheckBox                   *texturedRenderingBox;
     QCheckBox                   *textureModulationBox;
+    QCheckBox					*phongShadingBox;
 
     // check boxes for modelling options
     QCheckBox                   *showAxesBox;

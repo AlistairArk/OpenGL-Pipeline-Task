@@ -332,11 +332,11 @@ void TexturedObject::Render(RenderParameters *renderParameters)
         scale /= objectSize;
         
     //  now scale everything
-    glScalef(scale, scale, scale);
+//     glScalef(scale, scale, scale);
 
     // apply the translation to the centre of the object if requested
     if (renderParameters->centreObject)
-        glTranslatef(-centreOfGravity.x, -centreOfGravity.y, -centreOfGravity.z);
+        glTranslatef(-centreOfGravity.x * scale, -centreOfGravity.y * scale, -centreOfGravity.z * scale);
 
     // emissive glow from object
     float emissiveColour[4];
@@ -382,9 +382,9 @@ void TexturedObject::Render(RenderParameters *renderParameters)
                 // now we use that ID to lookup
                 glNormal3f
                     (
-                    normals         [faceNormals    [face][faceVertex]  ].x * scale,
-                    normals         [faceNormals    [face][faceVertex]  ].y * scale,
-                    normals         [faceNormals    [face][faceVertex]  ].z * scale
+                    normals         [faceNormals    [face][faceVertex]  ].x,
+                    normals         [faceNormals    [face][faceVertex]  ].y,
+                    normals         [faceNormals    [face][faceVertex]  ].z
                     );
                     
                 // if we're using UVW colours, set both colour and material
@@ -405,9 +405,9 @@ void TexturedObject::Render(RenderParameters *renderParameters)
                 // and set the vertex position
                 glVertex3f
                     (
-                    vertices        [faceVertices   [face][faceVertex]].x,
-                    vertices        [faceVertices   [face][faceVertex]].y,
-                    vertices        [faceVertices   [face][faceVertex]].z
+                    scale * vertices        [faceVertices   [face][faceVertex]].x,
+                    scale * vertices        [faceVertices   [face][faceVertex]].y,
+                    scale * vertices        [faceVertices   [face][faceVertex]].z
                     );
                 } // per vertex
             } // per triangle
@@ -460,11 +460,11 @@ void TexturedObject::FakeGLRender(RenderParameters *renderParameters, FakeGL *fa
         scale /= objectSize;
         
     //  now scale everything
-    fakeGL->Scalef(scale, scale, scale);
+//     fakeGL->Scalef(scale, scale, scale);
 
     // apply the translation to the centre of the object if requested
     if (renderParameters->centreObject)
-        fakeGL->Translatef(-centreOfGravity.x, -centreOfGravity.y, -centreOfGravity.z);
+        fakeGL->Translatef(-centreOfGravity.x * scale, -centreOfGravity.y * scale, -centreOfGravity.z * scale);
 
     // emissive glow from object
     float emissiveColour[4];
@@ -505,9 +505,9 @@ void TexturedObject::FakeGLRender(RenderParameters *renderParameters, FakeGL *fa
                 // now we use that ID to lookup
                 fakeGL->Normal3f
                     (
-                    normals         [faceNormals    [face][faceVertex]  ].x * scale,
-                    normals         [faceNormals    [face][faceVertex]  ].y * scale,
-                    normals         [faceNormals    [face][faceVertex]  ].z * scale
+                    normals         [faceNormals    [face][faceVertex]  ].x,
+                    normals         [faceNormals    [face][faceVertex]  ].y,
+                    normals         [faceNormals    [face][faceVertex]  ].z
                     );
                     
                 // if we're using UVW colours, set both colour and material
@@ -529,9 +529,9 @@ void TexturedObject::FakeGLRender(RenderParameters *renderParameters, FakeGL *fa
                 // and set the vertex position
                 fakeGL->Vertex3f
                     (
-                    vertices        [faceVertices   [face][faceVertex]].x,
-                    vertices        [faceVertices   [face][faceVertex]].y,
-                    vertices        [faceVertices   [face][faceVertex]].z
+                    scale * vertices        [faceVertices   [face][faceVertex]].x,
+                    scale * vertices        [faceVertices   [face][faceVertex]].y,
+                    scale * vertices        [faceVertices   [face][faceVertex]].z
                     );
                 } // per vertex
             } // per triangle

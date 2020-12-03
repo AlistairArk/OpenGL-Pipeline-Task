@@ -52,6 +52,7 @@ const unsigned int FAKEGL_DEPTH_BUFFER_BIT = 2;
 const unsigned int FAKEGL_LIGHTING = 1;
 const unsigned int FAKEGL_TEXTURE_2D = 2;
 const unsigned int FAKEGL_DEPTH_TEST = 3;
+const unsigned int FAKEGL_PHONG_SHADING = 4;
 // constants for Light() - actually bit flags
 const unsigned int FAKEGL_POSITION = 1;
 const unsigned int FAKEGL_AMBIENT = 2;
@@ -137,6 +138,7 @@ class FakeGL
     bool enableLighting  = false;
     bool enableTexture2D = false;
     bool enableDepthTest = false;
+    bool enablePhongShading = false;
 
     //-----------------------------
     // OUTPUT FROM TRANSFORM STAGE
@@ -171,10 +173,6 @@ class FakeGL
     // a second RGBAImage in which the alpha stores the depth buffer
     RGBAImage depthBuffer;
 
-    // for the depthBuffer we will use the float limit for our negative
-    // infinity value
-    float negativeInfinity = -std::numeric_limits<float>::infinity();
-
     //-------------------------------------------------//
     //                                                 //
     // CONSTRUCTOR / DESTRUCTOR                        //
@@ -192,21 +190,21 @@ class FakeGL
     // GEOMETRIC PRIMITIVE ROUTINES                    //
     //                                                 //
     //-------------------------------------------------//
-    int primitiveType;
-    float pointSize = 5;
-    float lineWidth = 5;
 
     // starts a sequence of geometric primitives
     void Begin(unsigned int PrimitiveType);
+    int primitiveType;
 
     // ends a sequence of geometric primitives
     void End();
 
     // sets the size of a point for drawing
     void PointSize(float size);
+    float pointSize = 5;
 
     // sets the width of a line for drawing purposes
     void LineWidth(float width);
+    float lineWidth = 5;
 
     //-------------------------------------------------//
     //                                                 //
@@ -215,10 +213,12 @@ class FakeGL
     //-------------------------------------------------//
 
     // Matrix4 matrixIdentity;     // Identity matrix
-    Matrix4 matrixModelview;    // Modelview matrix
+    Matrix4 matrixFrustum;      // Frustum matrix
+    Matrix4 matrixOrtho;        // Frustum matrix
     Matrix4 matrixProjection;   // Projection matrix
     Matrix4 matrixMultMatrix;   // Matrix fed into the MultMatrix
     Matrix4 matrixTransform;
+    Matrix4 matrixModelview;
 
     // Matrix for the rotation finction
     Matrix4 matrixRotationX;
@@ -228,6 +228,9 @@ class FakeGL
     // the current matrix to be applied to a given vertex
     Matrix4 matrixCurrent;
 
+    // Matrix stack
+    std::deque<Matrix4> matrixStackProjection;
+    std::deque<Matrix4> matrixStackModelview;
 
 
     // set the matrix mode (i.e. which one we change)
@@ -278,9 +281,18 @@ class FakeGL
     void Materialf(unsigned int parameterName, const float parameterValue);
     void Materialfv(unsigned int parameterName, const float *parameterValues);
 
+    float materialShininessValue;
+
+    float materialAmbientValues[4]  = {0.2, 0.2, 0.2, 1.0};
+    float materialDiffuseValues[4]  = {0.8, 0.8, 0.8, 1.0};
+
+    float materialSpecularValues[4] = {0, 0, 0, 1};
+    float materialEmissionValues[4] = {0, 0, 1, 0};
+
+
     // sets the normal vector
     void Normal3f(float x, float y, float z);
-    Cartesian3 normal3f;
+    Cartesian3 normalVector;
 
     // sets the texture coordinates
     void TexCoord2f(float u, float v);
@@ -308,11 +320,10 @@ class FakeGL
 
     // sets properties for the one and only light
     void Light(int parameterName, const float *parameterValues);
-    float lightPositionValues[8];
-    float lightAmbientValues[8];
-    float lightDiffuseValues[8];
-    float lightAmbientAndDiffuseValues[8];
-    float lightSpecularValues[8];
+    float lightPositionValues[4] = {0, 0, 1, 0}; // stores the position of the light
+    float lightAmbientValues[4]  = {1, 1, 1, 1}; // stores the colour of the ambient light
+    float lightDiffuseValues[4]  = {1, 1, 1, 1}; // stores the colour of the diffuse light
+    float lightSpecularValues[4] = {1, 1, 1, 1}; // stores the colour of the diffuse light
 
     //-------------------------------------------------//
     //                                                 //

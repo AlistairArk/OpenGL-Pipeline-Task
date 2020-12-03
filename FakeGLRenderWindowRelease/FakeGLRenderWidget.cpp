@@ -174,6 +174,11 @@ void FakeGLRenderWidget::paintFakeGL()
         // not to the light. So, even though we are treating them as global,
         // they belong in the TexturedObject render code
 
+        // test for Phong shading
+        if (renderParameters->phongShadingOn)
+        	fakeGL.Enable(FAKEGL_PHONG_SHADING);
+        else
+        	fakeGL.Disable(FAKEGL_PHONG_SHADING);
         } // use lighting
 
     // translate by the visual translation

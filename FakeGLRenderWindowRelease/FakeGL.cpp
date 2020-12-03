@@ -119,19 +119,11 @@ void FakeGL::LineWidth(float width)
 void FakeGL::MatrixMode(unsigned int whichMatrix)
     { // MatrixMode()
         /*
-            mode
-                Specifies withc metrix stack is the target of subsequent matrix
+            whichMatrix
+                Specifies withc matrix stack is the target of subsequent matrix
                 operations. Three values are accepted: GL_MODELVIEW, GL_PROJECTION
                 and GL_TEXTURE. The initial value is GL_MODELVIEW.
 
-            glMatrixMode sets the current matrix mode. mode can assume one of
-            four values.
-
-            GL_TEXTURE
-                Applies subsequent matrix operations to the texture matrix stack.
-
-            GL_COLOR
-                Applies subsequent matrix operations to the color matrix stack
         */
 
         switch (whichMatrix)
@@ -153,11 +145,43 @@ void FakeGL::MatrixMode(unsigned int whichMatrix)
 void FakeGL::PushMatrix()
     { // PushMatrix()
 
+        switch (matrixState)
+        {
+            // Applies subsequent matrix operations to the modelview matrix stack
+            case FAKEGL_MODELVIEW:
+                matrixStackModelview.push_front(matrixCurrent);
+                break;
+
+            // Applies subsequent matrix operations to the projection matrix stack
+            case FAKEGL_PROJECTION:
+                matrixStackProjection.push_front(matrixCurrent);
+                break;
+        }
+
     } // PushMatrix()
 
 // pops a matrix off the stack
 void FakeGL::PopMatrix()
     { // PopMatrix()
+
+        switch (matrixState)
+        {
+            case FAKEGL_MODELVIEW:
+                if (sizeof(matrixStackModelview)  > 0 )
+                {
+                    matrixCurrent = matrixStackModelview.front();
+                    matrixStackModelview.pop_front();
+                }
+                break;
+
+            case FAKEGL_PROJECTION:
+                if (sizeof(matrixStackProjection)  > 0 )
+                {
+                    matrixCurrent = matrixStackProjection.front();
+                    matrixStackProjection.pop_front();
+                }
+                break;
+        }
 
     } // PopMatrix()
 
@@ -207,17 +231,76 @@ void FakeGL::MultMatrixf(const float *columnMajorCoordinates)
         }
 
         // multiply the current matrix by the one specified in matrixMultMatrix
-        matrixCurrent = matrixCurrent*matrixMultMatrix;
+        matrixCurrent = matrixMultMatrix*matrixCurrent;
 
     } // MultMatrixf()
 
 // sets up a perspective projection matrix
 void FakeGL::Frustum(float left, float right, float bottom, float top, float zNear, float zFar)
     { // Frustum()
+    /*
+    PARAMETERS
 
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " Frustum (" <<  left << ", " <<  right << ", " <<  bottom << ", " <<  top << ", " <<  zNear << ", " <<  zFar << ")" << std::endl;
+           left, right Specify  the  coordinates  for  the left and right vertical
+                       clipping planes.
 
+           bottom, top Specify the coordinates for the bottom and  top  horizontal
+                       clipping planes.
+
+           zNear, zFar Specify  the  distances  to the near and far depth clipping
+                       planes.  Both distances must be positive.
+
+
+    DESCRIPTION
+
+           glFrustum describes a perspective matrix that  produces  a  perspective
+           projection.   The  current  matrix  (see glMatrixMode) is multiplied by
+           this  matrix  and  the  result  replaces  the  current  matrix,  as  if
+           glMultMatrix were called with the following matrix as its argument:
+
+
+              2 zNear
+            ------------       0              A              0
+            right - left
+
+                            2 zNear
+                0         ------------        B              0
+                          top - bottom
+
+                0              0              C              D
+
+
+                0              0              -1             0
+
+                            A = (right + left) / (right - left)
+                            B = (top + bottom) / (top - bottom)
+                            C = - (zFar + zNear) / (zFar - zNear)
+                            D = - (2 zFar zNear) / (zFar - zNear)
+
+           Typically, the matrix mode is GL_PROJECTION, and (left, bottom, -zNear)
+           and (right, top,  -zNear) specify the points on the near clipping plane
+           that  are  mapped to the lower left and upper right corners of the win-
+           dow, assuming that the eye is located at (0, 0,  0).   -zFar  specifies
+           the  location  of  the far clipping plane.  Both zNear and zFar must be
+           positive.
+
+           Use glPushMatrix and glPopMatrix to save and restore the current matrix
+           stack.
+    */
+
+    float A = (right + left) / (right - left);
+    float B = (top + bottom) / (top - bottom);
+    float C = - (zFar + zNear) / (zFar - zNear);
+    float D = - (2*zFar*zNear) / (zFar - zNear);
+
+    matrixFrustum[0][0] = (2*zNear)/(right-left); matrixFrustum[1][0] = 0;                      matrixFrustum[2][0] = A;  matrixFrustum[3][0] = 0;
+    matrixFrustum[0][1] = 0;                      matrixFrustum[1][1] = (2*zNear)/(top-bottom); matrixFrustum[2][1] = B;  matrixFrustum[3][1] = 0;
+    matrixFrustum[0][2] = 0;                      matrixFrustum[1][2] = 0;                      matrixFrustum[2][2] = C;  matrixFrustum[3][2] = D;
+    matrixFrustum[0][3] = 0;                      matrixFrustum[1][3] = 0;                      matrixFrustum[2][3] = -1; matrixFrustum[3][3] = 0;
+
+    matrixCurrent = matrixFrustum;
+
+    PushMatrix();
     } // Frustum()
 
 // sets an orthographic projection matrix
@@ -257,18 +340,24 @@ void FakeGL::Ortho(float left, float right, float bottom, float top, float zNear
                 ty = - (top + bottom) / (top - bottom)
                 tz = - (zFar + zNear) / (zFar - zNear)
         */
+        float tx = - (right + left) / (right - left);
+        float ty = - (top + bottom) / (top - bottom);
+        float tz = - (zFar + zNear) / (zFar - zNear);
 
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " Ortho (" <<  left << ", " <<  right << ", " <<  bottom << ", " <<  top << ", " <<  zNear << ", " <<  zFar << ")" << std::endl;
+        matrixOrtho[0][0] = (2/(right-left)); matrixOrtho[1][0] = 0;                matrixOrtho[2][0] = 0;                 matrixOrtho[3][0] = tx;
+        matrixOrtho[0][1] = 0;                matrixOrtho[1][1] = (2/(top-bottom)); matrixOrtho[2][1] = 0;                 matrixOrtho[3][1] = ty;
+        matrixOrtho[0][2] = 0;                matrixOrtho[1][2] = 0;                matrixOrtho[2][2] = (-1/(zFar/zNear)); matrixOrtho[3][2] = tz;
+        matrixOrtho[0][3] = 0;                matrixOrtho[1][3] = 0;                matrixOrtho[2][3] = 0;                 matrixOrtho[3][3] = 1;
+
+        matrixCurrent = matrixOrtho;
+
+        PushMatrix();
 
     } // Ortho()
 
 // rotate the matrix
 void FakeGL::Rotatef(float angle, float axisX, float axisY, float axisZ)
     { // Rotatef()
-
-        // std::cout << "==========================================" << std::endl;
-        // std::cout << " Rotatef: ("<< angle << ", " << axisX << ", " << axisY << ")" << std::endl;
 
         /*
             PARAMETERS
@@ -281,16 +370,7 @@ void FakeGL::Rotatef(float angle, float axisX, float axisY, float axisZ)
             DESCRIPTION
                glRotate produces a rotation of angle degrees around the vector x y z.
                The current matrix (see glMatrixMode()) is multiplied by a rotation
-               matrix with the product replacing the current matrix, as if
-               glMultMatrix() were called with the following matrix as its argument:
-
-               x 2 <U+2061> 1 - c + c x <U+2062> y <U+2061> 1 - c - z <U+2062> s x
-            <U+2062> z <U+2061> 1 - c + y <U+2062> s 0 y <U+2062> x <U+2061> 1
-               - c + z <U+2062> s y 2 <U+2061> 1 - c + c y <U+2062> z <U+2061> 1 - c - x <U+2062> s 0 x <U+2062> z <U+2061> 1 - c - y <U+2062>
-               s y <U+2062> z <U+2061> 1 - c + x <U+2062> s z 2 <U+2061> 1 - c + c 0 0 0 0 1
-
-               Where c = cos <U+2061> angle, s = sin <U+2061> angle, and x y z = 1 (if not, the GL
-               will normalize this vector).
+               matrix with the product replacing the current matrix.
 
                If the matrix mode is either GL_MODELVIEW or GL_PROJECTION, all objects
                drawn after glRotate is called are rotated. Use glPushMatrix() and
@@ -300,6 +380,8 @@ void FakeGL::Rotatef(float angle, float axisX, float axisY, float axisZ)
                This rotation follows the right-hand rule, so if the vector x y z
                points toward the user, the rotation will be counterclockwise.
         */
+
+        std::cout << "===---ROTATE---===" << std::endl;
 
     } // Rotatef()
 
@@ -340,6 +422,7 @@ void FakeGL::Scalef(float xScale, float yScale, float zScale)
 
         matrixCurrent =  matrixScale*matrixCurrent;
 
+        PushMatrix();
     } // Scalef()
 
 // translate the matrix
@@ -369,6 +452,8 @@ void FakeGL::Translatef(float xTranslate, float yTranslate, float zTranslate)
         matrixTranslate[0][3] = 0; matrixTranslate[1][3] = 0; matrixTranslate[2][3] = 0; matrixTranslate[3][3] = 1;
 
         matrixCurrent =  matrixTranslate*matrixCurrent;
+
+        PushMatrix();
 
     } // Translatef()
 
@@ -430,83 +515,128 @@ void FakeGL::Color3f(float red, float green, float blue)
 void FakeGL::Materialf(unsigned int parameterName, const float parameterValue)
     { // Materialf()
 
+        /*
+            parameterName
+                The single-valued material parameter of the face or faces being
+                updated. Must be GL_SHININESS.
+        */
+
         switch(parameterName){
-            case FAKEGL_AMBIENT:
-                break;
-            case FAKEGL_DIFFUSE:
-                break;
-            case FAKEGL_AMBIENT_AND_DIFFUSE:
-                break;
-            case FAKEGL_SPECULAR:
-                break;
-            case FAKEGL_EMISSION:
-                break;
+
             case FAKEGL_SHININESS:
+                /*
+                    params is a single integer or floating-point value that specifies the RGBA specular
+                    exponent of the material. Integer and floating-point values are mapped directly.
+                    Only values in the range 0 128 are accepted. The initial specular exponent for both
+                    front- and back-facing materials is 0.
+                */
+                materialShininessValue = parameterValue;
                 break;
+
+
         }
+
 
     } // Materialf()
 
 void FakeGL::Materialfv(unsigned int parameterName, const float *parameterValues)
     { // Materialfv()
 
+
+        // std::cout << "=====MATERIAL=====" << parameterName << std::endl;
+
+
         switch(parameterName){
             case FAKEGL_AMBIENT:
+                // std::cout << "FAKEGL_AMBIENT" << std::endl;
+                /*
+                    params contains four integer or floating-point values that specify the ambient RGBA
+                    reflectance of the material. Integer values are mapped linearly such that the most
+                    positive representable value maps to 1.0, and the most negative representable value
+                    maps to -1.0. Floating-point values are mapped directly. Neither integer nor
+                    floating-point values are clamped. The initial ambient reflectance for both front-
+                    and back-facing materials is (0.2, 0.2, 0.2, 1.0).
+                */
+                for( unsigned int n = 0; n < 4; n++ ) materialAmbientValues[n] = parameterValues[n];
                 break;
             case FAKEGL_DIFFUSE:
+                // std::cout << "FAKEGL_DIFFUSE" << std::endl;
+                /*
+                    params contains four integer or floating-point values that specify the diffuse RGBA
+                    reflectance of the material. Integer values are mapped linearly such that the most
+                    positive representable value maps to 1.0, and the most negative representable value
+                    maps to -1.0. Floating-point values are mapped directly. Neither integer nor
+                    floating-point values are clamped. The initial diffuse reflectance for both front-
+                    and back-facing materials is (0.8, 0.8, 0.8, 1.0).
+                */
+                for( unsigned int n = 0; n < 4; n++ ) materialDiffuseValues[n] = parameterValues[n];
                 break;
             case FAKEGL_AMBIENT_AND_DIFFUSE:
+                // std::cout << "FAKEGL_AMBIENT_AND_DIFFUSE" << std::endl;
+                for( unsigned int n = 0; n < 4; n++ ) materialAmbientValues[n] = parameterValues[n];
+                for( unsigned int n = 0; n < 4; n++ ) materialDiffuseValues[n] = parameterValues[n];
+
                 break;
             case FAKEGL_SPECULAR:
+                // std::cout << "FAKEGL_SPECULAR" << std::endl;
+                /*
+                    params contains four integer or floating-point values that specify the specular RGBA
+                    reflectance of the material. Integer values are mapped linearly such that the most
+                    positive representable value maps to 1.0, and the most negative representable value
+                    maps to -1.0. Floating-point values are mapped directly. Neither integer nor
+                    floating-point values are clamped. The initial specular reflectance for both front-
+                    and back-facing materials is (0, 0, 0, 1).
+                */
+                for( unsigned int n = 0; n < 4; n++ ) materialSpecularValues[n] = parameterValues[n];
                 break;
             case FAKEGL_EMISSION:
+                // std::cout << "FAKEGL_EMISSION" << std::endl;
+                /*
+                    params contains four integer or floating-point values that specify the RGBA emitted
+                    light intensity of the material. Integer values are mapped linearly such that the
+                    most positive representable value maps to 1.0, and the most negative representable
+                    value maps to -1.0. Floating-point values are mapped directly. Neither integer nor
+                    floating-point values are clamped. The initial emission intensity for both front-
+                    and back-facing materials is (0, 0, 0, 1).
+
+                */
+                for( unsigned int n = 0; n < 4; n++ ) materialEmissionValues[n] = parameterValues[n];
                 break;
+
             case FAKEGL_SHININESS:
+                // std::cout << "FAKEGL_SHININESS" << std::endl;
+                /*
+                   params is a single integer or floating-point value that specifies the RGBA specular
+                   exponent of the material. Integer and floating-point values are mapped directly.
+                   Only values in the range 0 128 are accepted. The initial specular exponent for both
+                   front- and back-facing materials is 0.
+                */
+                materialShininessValue = parameterValues[0];
                 break;
         }
+        // for( unsigned int n = 0; n < 4; n++ ) std::cout << parameterValues[n] << std::endl;
+
 
     } // Materialfv()
 
 // sets the normal vector
 void FakeGL::Normal3f(float x, float y, float z)
     { // Normal3f()
-
-        normal3f = {x, y, z};
-
         /*
-            PARAMETERS
-               nx, ny, nz
-                   Specify the x, y, and z coordinates of the new current normal. The
-                   initial value of the current normal is the unit vector, (0, 0, 1).
+        PARAMETERS
+            nx, ny, nz
+                Specify the x, y, and z coordinates of the new current normal. The
+                initial value of the current normal is the unit vector, (0, 0, 1).
 
-            PARAMETERS
-            v
-                Specifies a pointer to an array of three elements: the x, y, and z
-                coordinates of the new current normal.
-
-            DESCRIPTION
-                   The current normal is set to the given coordinates whenever glNormal is
-                   issued. Byte, short, or integer arguments are converted to
-                   floating-point format with a linear mapping that maps the most positive
-                   representable integer value to 1.0 and the most negative representable
-                   integer value to -1.0.
-
-                   Normals specified with glNormal need not have unit length. If
-                   GL_NORMALIZE is enabled, then normals of any length specified with
-                   glNormal are normalized after transformation. If GL_RESCALE_NORMAL is
-                   enabled, normals are scaled by a scaling factor derived from the
-                   modelview matrix.  GL_RESCALE_NORMAL requires that the originally
-                   specified normals were of unit length, and that the modelview matrix
-                   contain only uniform scales for proper results. To enable and disable
-                   normalization, call glEnable() and glDisable() with either GL_NORMALIZE
-                   or GL_RESCALE_NORMAL. Normalization is initially disabled.
-
-            NOTES
-                   The current normal can be updated at any time. In particular, glNormal
-                   can be called between a call to glBegin() and the corresponding call to
-                   glEnd().
-
+        DESCRIPTION
+            The current normal is set to the given coordinates whenever glNormal is
+            issued. Byte, short, or integer arguments are converted to
+            floating-point format with a linear mapping that maps the most positive
+            representable integer value to 1.0 and the most negative representable
+            integer value to -1.0.
         */
+
+    normalVector = {x, y, z};
 
     } // Normal3f()
 
@@ -516,29 +646,21 @@ void FakeGL::TexCoord2f(float u, float v)
 
         /*
             PARAMETERS
-                   v
-                       Specifies a pointer to an array of one, two, three, or four
-                       elements, which in turn specify the s, t, r, and q texture
-                       coordinates.
+               v
+               Specifies a pointer to an array of one, two, three, or four
+               elements, which in turn specify the s, t, r, and q texture
+               coordinates.
 
             DESCRIPTION
-                   glTexCoord specifies texture coordinates in one, two, three, or four
-                   dimensions.  glTexCoord1 sets the current texture coordinates to s 0 0
-                   1; a call to glTexCoord2 sets them to s t 0 1. Similarly, glTexCoord3
-                   specifies the texture coordinates as s t r 1, and glTexCoord4 defines
-                   all four components explicitly as s t r q.
+               glTexCoord specifies texture coordinates in one, two, three, or four
+               dimensions.  glTexCoord1 sets the current texture coordinates to s 0 0
+               1; a call to glTexCoord2 sets them to s t 0 1. Similarly, glTexCoord3
+               specifies the texture coordinates as s t r 1, and glTexCoord4 defines
+               all four components explicitly as s t r q.
 
-                   The current texture coordinates are part of the data that is associated
-                   with each vertex and with the current raster position. Initially, the
-                   values for s, t, r, and q are (0, 0, 0, 1).
-
-            NOTES
-                   The current texture coordinates can be updated at any time. In
-                   particular, glTexCoord can be called between a call to glBegin() and
-                   the corresponding call to glEnd().
-
-                   When the ARB_imaging extension is supported, glTexCoord always updates
-                   texture unit GL_TEXTURE0.
+               The current texture coordinates are part of the data that is associated
+               with each vertex and with the current raster position. Initially, the
+               values for s, t, r, and q are (0, 0, 0, 1).
         */
 
 
@@ -564,7 +686,6 @@ void FakeGL::Vertex3f(float x, float y, float z)
         v.position.z = z;
         v.position.w = 1.0f;
 
-        v.colour = colour3;
         vertexQueue.push_back(v);
 
         TransformVertex();
@@ -595,6 +716,10 @@ void FakeGL::Disable(unsigned int property)
             case FAKEGL_DEPTH_TEST:
                 enableDepthTest = false;
                 break;
+
+            case FAKEGL_PHONG_SHADING:
+                enablePhongShading = false;
+                break;
         }
 
     } // Disable()
@@ -616,6 +741,10 @@ void FakeGL::Enable(unsigned int property)
             case FAKEGL_DEPTH_TEST:
                 enableDepthTest = true;
                 break;
+
+            case FAKEGL_PHONG_SHADING:
+                enablePhongShading = true;
+                break;
         }
 
     } // Enable()
@@ -631,31 +760,143 @@ void FakeGL::Light(int parameterName, const float *parameterValues)
     { // Light()
 
           /*
-            params
+            parameterName
+                Specifies a single-valued light source parameter for light.
+
+            parameterValues
                 Specifies a pointer to the value or values that parameter pname of
                 light source light will be set to.
-
           */
-        switch(parameterName){
 
+
+        switch(parameterName)
+        {
             case FAKEGL_POSITION:
-                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightPositionValues[n] = parameterValues[n];
+                std::cout << "------------------------------" << std::endl;
+                std::cout << "FAKEGL_POSITION" << std::endl;
+                /*
+                    params contains four integer or floating-point values that specify
+                    the position of the light in homogeneous object coordinates. Both
+                    integer and floating-point values are mapped directly. Neither
+                    integer nor floating-point values are clamped.
+
+                    The position is transformed by the modelview matrix when glLight is
+                    called (just as if it were a point), and it is stored in eye
+                    coordinates.
+                */
+                matrixModelview = matrixStackModelview.front();    // Modelview matrix
+
+                std::cout << "Light Params:" << std::endl;
+                std::cout << parameterValues[0]<< ", " << parameterValues[1]<< ", " << parameterValues[2]<< ", " << parameterValues[3] << std::endl;
+                std::cout << "\nModelview Matrix:" << std::endl;
+                std::cout << matrixModelview << std::endl;
+
+
+
+                // Apply matrix to light position
+                lightPositionValues[0] = (parameterValues[0]*matrixModelview[0][0]) + (parameterValues[1]*matrixModelview[1][0]) + (parameterValues[2]*matrixModelview[2][0]) + (parameterValues[3]*matrixModelview[3][0]);
+                lightPositionValues[1] = (parameterValues[0]*matrixModelview[0][1]) + (parameterValues[1]*matrixModelview[1][1]) + (parameterValues[2]*matrixModelview[2][1]) + (parameterValues[3]*matrixModelview[3][1]);
+                lightPositionValues[2] = (parameterValues[0]*matrixModelview[0][2]) + (parameterValues[1]*matrixModelview[1][2]) + (parameterValues[2]*matrixModelview[2][2]) + (parameterValues[3]*matrixModelview[3][2]);
+                lightPositionValues[3] = (parameterValues[0]*matrixModelview[0][3]) + (parameterValues[1]*matrixModelview[1][3]) + (parameterValues[2]*matrixModelview[2][3]) + (parameterValues[3]*matrixModelview[3][3]);
+
+                /*
+                    If the w component of the position is 0, the light is
+                    treated as a directional source. Diffuse and specular lighting
+                    calculations take the light's direction, but not its actual
+                    position, into account, and attenuation is disabled. Otherwise,
+                    diffuse and specular lighting calculations are based on the actual
+                    location of the light in eye coordinates, and attenuation is
+                    enabled. The initial position is (0, 0, 1, 0); thus, the initial
+                    light source is directional, parallel to, and in the direction of
+                    the - z axis
+                */
+
+                std::cout << "\nPost Matrix Calculation: " << std::endl;
+                std::cout << lightPositionValues[0]<< ", " << lightPositionValues[1]<< ", " << lightPositionValues[2]<< ", " << lightPositionValues[3] << std::endl;
+
+                // Test the W component of the light position
+                // If it is 0, then you treat what remains as the vector.
+                if (lightPositionValues[3] == 0){
+                    // That is your vector to the light
+                }else{
+                    /*
+                        If it's 1, you treat it as a position and  you subtract
+                        the vertex from it to find the actual vector
+
+                        You have to convert it to cartesian (which is divide
+                        through by lw)
+
+                        The position of the light in space (vl):
+                            x = x/w
+                            y = y/w
+                            z = z/w
+                    */
+
+                    // This is your vl
+                    lightPositionValues[0] = lightPositionValues[0]/lightPositionValues[3];
+                    lightPositionValues[1] = lightPositionValues[1]/lightPositionValues[3];
+                    lightPositionValues[2] = lightPositionValues[2]/lightPositionValues[3];
+
+                    /*
+                        Once, you've got vl (vector from the surface to the
+                        light), and n (the normal of a vertex) and they're both
+                        units (length one), you take the dot product...
+
+                        Or you take the dot product, then divide through by the
+                        lights.
+                    */
+                }
+                std::cout << "\nPost W Check: " << std::endl;
+                std::cout << lightPositionValues[0]<< ", " << lightPositionValues[1]<< ", " << lightPositionValues[2]<< ", " << lightPositionValues[3] << std::endl;
+
                 break;
+
             case FAKEGL_AMBIENT:
-                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightAmbientValues[n] = parameterValues[n];
+                // std::cout << "FAKEGL_AMBIENT" << std::endl;
+                for( unsigned int n = 0; n < 4; n++ ) lightAmbientValues[n] = parameterValues[n];
                 break;
+
             case FAKEGL_DIFFUSE:
-                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightDiffuseValues[n] = parameterValues[n];
+                /*
+                    params contains four integer or floating-point values that specify
+                    the diffuse RGBA intensity of the light. Integer values are mapped
+                    linearly such that the most positive representable value maps to
+                    1.0, and the most negative representable value maps to -1.0.
+                    Floating-point values are mapped directly.
+                */
+                // std::cout << "FAKEGL_DIFFUSE" << std::endl;
+                for( unsigned int n = 0; n < 4; n++ ) lightDiffuseValues[n] = parameterValues[n];
                 break;
             case FAKEGL_AMBIENT_AND_DIFFUSE:
-                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightAmbientAndDiffuseValues[n] = parameterValues[n];
+                // std::cout << "FAKEGL_AMBIENT_AND_DIFFUSE" << std::endl;
+                /*
+                    The equivalent to calling glLight twice with the same
+                    parameter values. Once with GL_AMBIENT and once with
+                    GL_DIFFUSE.
+                */
+                for( unsigned int n = 0; n < 4; n++ ) lightAmbientValues[n] = parameterValues[n];
+                for( unsigned int n = 0; n < 4; n++ ) lightDiffuseValues[n] = parameterValues[n];
                 break;
             case FAKEGL_SPECULAR:
-                for( unsigned int n = 0; n < sizeof(parameterValues); n = n + 1 ) lightSpecularValues[n] = parameterValues[n];
+                // std::cout << "FAKEGL_SPECULAR" << std::endl;
+                /*
+                    params contains four integer or floating-point values that specify the specular RGBA
+                    intensity of the light. Integer values are mapped linearly such that the most
+                    positive representable value maps to 1.0, and the most negative representable value
+                    maps to -1.0. Floating-point values are mapped directly. Neither integer nor
+                    floating-point values are clamped. The initial value for GL_LIGHT0 is (1, 1, 1, 1);
+                    for other lights, the initial value is (0, 0, 0, 1).
+                */
+                /*
+                    The specular term has the same pattern as GL_POSITION
+
+                    Specular Light * Specular Reflection
+
+                    And multiply by in this case, n dot bisector vector
+                */
+                for( unsigned int n = 0; n < 4; n++ ) lightSpecularValues[n] = parameterValues[n];
                 break;
-
         }
-
     } // Light()
 
 //-------------------------------------------------//
@@ -701,11 +942,10 @@ void FakeGL::Clear(unsigned int mask)
             {
                 frameBuffer[row][col] = bgColour;
 
-                // For each pixel, set the z bugger to -infinity
+                // For each pixel, set the z buffer to -infinity
                 depthBuffer[row][col].alpha = 0;
             }
         }
-
     } // Clear()
 
 // sets the clear colour for the frame buffer
@@ -734,12 +974,161 @@ void FakeGL::TransformVertex()
         vertexQueue.pop_back();             // Pop vertex off queue
 
         vertexWithAttributes vertexTransformed;
+        RGBAValue vertexColour;             // Colour of current vertex
 
         // Apply the current matrix to the vertex
         vertexTransformed.position.x = (vertexCurrent.position.x*matrixCurrent[0][0]) + (vertexCurrent.position.y*matrixCurrent[1][0]) + (vertexCurrent.position.z*matrixCurrent[2][0]) + (vertexCurrent.position.w*matrixCurrent[3][0]);
         vertexTransformed.position.y = (vertexCurrent.position.x*matrixCurrent[0][1]) + (vertexCurrent.position.y*matrixCurrent[1][1]) + (vertexCurrent.position.z*matrixCurrent[2][1]) + (vertexCurrent.position.w*matrixCurrent[3][1]);
         vertexTransformed.position.z = (vertexCurrent.position.x*matrixCurrent[0][2]) + (vertexCurrent.position.y*matrixCurrent[1][2]) + (vertexCurrent.position.z*matrixCurrent[2][2]) + (vertexCurrent.position.w*matrixCurrent[3][2]);
         vertexTransformed.position.w = (vertexCurrent.position.x*matrixCurrent[0][3]) + (vertexCurrent.position.y*matrixCurrent[1][3]) + (vertexCurrent.position.z*matrixCurrent[2][3]) + (vertexCurrent.position.w*matrixCurrent[3][3]);
+
+
+        // COMPUTE LIGHT
+        if (enableLighting)
+        {
+            std::cout << "=========================================" << std::endl;
+            std::cout << " ---COMPUTE LIGHT---" << std::endl;
+
+            // store RGBA values of light as they are computed
+            // RGBAValue lightColour;
+            float r=0,g=0,b=0,a=0;
+
+            // Compute light, and the lighting to each vertex of the mesh
+            // This tells us what colour that vertex is
+
+            // Transform the model normal's orientation into eye space
+
+
+            // Get distance between the light and the model vertex (used for attenuation)
+
+            // Calculate the dot product of the light vector and vertex normal.
+            // If the normal and light vector are pointing in the same direction then
+            // it will get max illumination.
+
+            // Attenuate the light based on the distance
+
+            // Multiply the colour by the illumination level.
+
+
+            // COMBINE THE ATTRIBUTES OF THE LIGHT WITH THE ATTRIBUTES OF THE SURFACE
+
+            /*  === SET EMISSIVE COLOUR ===
+                l(emitted)
+
+                Simply add on the emission values
+            */
+            std::cout << "materialEmissionValues:  (" << materialEmissionValues[0] << ", " << materialEmissionValues[1] << ", " << materialEmissionValues[2] << ", " << materialEmissionValues[3] << ")" << std::endl;
+
+            r += materialEmissionValues[0];
+            g += materialEmissionValues[1];
+            b += materialEmissionValues[2];
+            a += materialEmissionValues[3];
+
+            /*  === SET AMBIENT COLOUR ===
+                l(ambient) * r(ambient)
+
+                Take the ambient, and multiply it by the colour of the light
+                source (modulate).
+            */
+            r += lightAmbientValues[0] * materialAmbientValues[0];
+            g += lightAmbientValues[1] * materialAmbientValues[1];
+            b += lightAmbientValues[2] * materialAmbientValues[2];
+            a += lightAmbientValues[3] * materialAmbientValues[3];
+
+            /*  === SET DIFFUSE COLOUR ==
+                                              (n DOT vl)        <--- Dot product
+                l(diffuse) * r(diffuse) * -----------------          of n & vl
+                                            ||n||  ||vl||       <--- Divide through
+                                                                     by unit normals
+
+                WHERE:
+                    n  = The normal of the vertex
+                    vl = A vector form the surface to the positon of the light
+
+                    Once, we have vl, and n (the normal of a vertex) and
+                    they're both units (length one), you take the dot product...
+
+                Because diffuse depends on the angle you have to add the
+                term for the angle into it.
+
+                CALCULATE VECTOR:
+                    ->
+                    PQ  = (xQ-xP, yQ-yP, zQ-zP)
+
+                If you want a vector from a vertex on the surface to the
+                position of the light in space you subrtact the tail from
+                the head (The tail is the vertex on the surface, the head
+                is the light source, because you want the vector that goes
+                out, ie. the direction of the light source).
+            */
+
+            // compute n (vector from a vertex on the surface to the position
+            // of the light in space)
+            vector<float> n = {
+                                lightPositionValues[0]-vertexCurrent.position.x,
+                                lightPositionValues[1]-vertexCurrent.position.y,
+                                lightPositionValues[2]-vertexCurrent.position.z
+                              };
+            // compute the base normal of n
+            float nBaseNormal = sqrt( pow(n[0],2) + pow(n[1],2) + pow(n[2],2) );
+
+            // set light position values as vector3
+            vector<float> vl = { lightPositionValues[0], lightPositionValues[1], lightPositionValues[2]};
+            // std::cout << "vl: (" << vl[0] << ", " << vl[1] << ", " << vl[2] << ")" << std::endl;
+            // std::cout << "n:  (" << n[0]  << ", " << n[1]  << ", " << n[2]  << ")" << std::endl;
+
+            // compute the base normal of vl
+            float vlBaseNormal = sqrt( pow(vl[0],2) + pow(vl[1],2) + pow(vl[2],2) );
+
+            // normalise n & vl
+            vector<float> nNormalised  = {(n[0]  / nBaseNormal ), (n[1]  / nBaseNormal ), (n[2]  / nBaseNormal) };
+            vector<float> vlNormalised = {(vl[0] / vlBaseNormal), (vl[1] / vlBaseNormal), (vl[2] / vlBaseNormal)};
+            // std::cout << "vlNormalised: (" << vlNormalised[0] << ", " << vlNormalised[1] << ", " << vlNormalised[2] << ")" << std::endl;
+            // std::cout << "nNormalised:  (" << nNormalised[0]  << ", " << nNormalised[1]  << ", " << nNormalised[2]  << ")" << std::endl;
+
+            // compute dot product n & vl
+            float diffuseAngle = ( (nNormalised[0]*vlNormalised[0]) + (nNormalised[1]*vlNormalised[1]) + (nNormalised[2]*vlNormalised[2]));
+            std::cout << "diffuseAngle: " << diffuseAngle << std::endl;
+
+            r += lightDiffuseValues[0] * materialDiffuseValues[0] * diffuseAngle;
+            g += lightDiffuseValues[1] * materialDiffuseValues[1] * diffuseAngle;
+            b += lightDiffuseValues[2] * materialDiffuseValues[2] * diffuseAngle;
+            a += lightDiffuseValues[3] * materialDiffuseValues[3] * diffuseAngle;
+
+            // Convert to colour
+            r *= 255;
+            g *= 255;
+            b *= 255;
+            a *= 255;
+
+            // clamp colour
+            if (r>255) r=255;
+            if (g>255) g=255;
+            if (b>255) b=255;
+            if (a>255) a=255;
+
+            // Normalize the the combined attributes and set the vertex colour
+            vertexColour.red    = r;    // THIS IS JUST OUR LIGHT!!! WE NEED TO NOT SET IT TO THE VERTEX HERE! INSTEAD WE SHOULD HAVE A SEPERATE BIT OF CODE LATER DOWN THE LINE TO TAKE THE VERTEX COLOUR, TAKE THE TEXTURE,
+            vertexColour.green  = g;    // TAKE THE LIGHT, AND THEN MODULATE IT ALL AS NEEDED.. BUT DEPENDING ON ORDER OF OPERATION SETTIGN LIGHT HERE MAY BE FINE TOO.
+            vertexColour.blue   = b;
+            vertexColour.alpha  = a;
+            // Following this use the barycentric interpolation to interpolate across
+        }else{
+
+            // No lighting, so simply set the vertex colour
+            vertexColour = colour3;
+        }
+
+
+
+        // COMPUTE TEXTURE  **IMPLIMENT LIGHTING FIRST
+        if (enableTexture2D)
+        {
+            // Compute texture coordinates for each vertex in the mesh
+
+            // Then use barycentric interpolation to interpolate between
+            // and find all the other texture coordinates.
+        }
 
         // Convert to vertex to DCS (Device Coordinate System)
         int height = frameBuffer.height;
@@ -755,34 +1144,26 @@ void FakeGL::TransformVertex()
             vertexDeviceCoordinate.position.x  = (width  *.5) + (vertexTransformed.position.x * (viewportY));
             vertexDeviceCoordinate.position.y  = (height *.5) + (vertexTransformed.position.y * (viewportY));
         }
-        // Store the Z position for Z sorting
+
+        // Store the vertex Z position for Z sorting
         vertexDeviceCoordinate.position.z  = vertexTransformed.position.z;
 
         // Get color data from the vertex
-        vertexDeviceCoordinate.colour      = vertexCurrent.colour;
+        vertexDeviceCoordinate.colour      = vertexColour;
         rasterQueue.push_back(vertexDeviceCoordinate);
-
 
         // If primitive to rasterise is found, process fragments in queue
         if (RasterisePrimitive()){
-            // std::cout << "------------------------------------------" << std::endl;
-            // std::cout << " ProcessFragment () " << std::endl;
-            // std::cout << "\tProcessing fragments in queue...";
 
             while (fragmentQueue.size()>0){
                 ProcessFragment();
             }
-
         }
-
-
-
     } // TransformVertex()
 
 // rasterise a single primitive if there are enough vertices on the queue
 bool FakeGL::RasterisePrimitive()
     { // RasterisePrimitive()
-
 
         // Check number of verticies in the queue
         // If enough verticies send them, else return false
@@ -792,9 +1173,6 @@ bool FakeGL::RasterisePrimitive()
             // Vertex $n$ defines point $n$. $N$ points are drawn.
             case FAKEGL_POINTS:      // Cheack number of vertices on the queue
                 if (rasterQueue.size() == 1){
-                    // std::cout << "------------------------------------------" << std::endl;
-                    // std::cout << " RasterisePrimitive () " << std::endl;
-                    // std::cout << "\tProcessing: FAKEGL_POINTS" << std::endl;
 
                     // Send the verticies down the pipeline
                     screenVertexWithAttributes dcs0;
@@ -805,11 +1183,11 @@ bool FakeGL::RasterisePrimitive()
                     return true;
                 }
                 break;
+
             // Treats each pair of verticies as an independent line segment.
             // Verticies $2n^-^1$ and $2n$ define line $n$. $N/2$ lines are drawn.
             case FAKEGL_LINES:       // Cheack number of vertices on the queue
                 if (rasterQueue.size() == 2){
-
 
                     // Send the verticies down the pipeline
                     screenVertexWithAttributes dcs0;
@@ -819,11 +1197,6 @@ bool FakeGL::RasterisePrimitive()
                     screenVertexWithAttributes dcs1;
                     dcs1 = rasterQueue.front();
                     rasterQueue.pop_front(); // Pop verticies off the queue
-
-                    std::cout << "------------------------------------------" << std::endl;
-                    std::cout << " RasterisePrimitive () " << std::endl;
-                    std::cout << "\tProcessing: FAKEGL_LINES" << std::endl;
-                    std::cout << dcs0 << dcs1 << std::endl;
                     RasteriseLineSegment(dcs0, dcs1);
 
                     return true;
@@ -835,9 +1208,6 @@ bool FakeGL::RasterisePrimitive()
             // $N/3$ triangles are drawn.
             case FAKEGL_TRIANGLES:  // Cheack number of vertices on the queue
                 if (rasterQueue.size() == 3){
-                    // std::cout << "------------------------------------------" << std::endl;
-                    // std::cout << " RasterisePrimitive () " << std::endl;
-                    // std::cout << "\tProcessing: FAKEGL_TRIANGLES" << std::endl;
 
                     // Send the verticies down the pipeline
                     screenVertexWithAttributes dcs0;
@@ -868,10 +1238,6 @@ bool FakeGL::RasterisePrimitive()
 // rasterises a single point
 void FakeGL::RasterisePoint(screenVertexWithAttributes &vertex0)
     { // RasterisePoint()
-
-        // std::cout << "------------------------------------------" << std::endl;
-        // std::cout << " RasterisePoint () \n"<< vertex0 << std::endl;
-        std::cout << " FRAGMENT Z \n"<< vertex0.position.z << std::endl;
 
         int x,y;
         x = vertex0.position.x;
@@ -908,7 +1274,7 @@ void FakeGL::RasterisePoint(screenVertexWithAttributes &vertex0)
 void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVertexWithAttributes &vertex1)
     { // RasteriseLineSegment()
 
-        // Begin by converting to screenspace co-ordinates
+        // Assign verticies shorthand variables
         float x1 = vertex0.position.x; // Axis in width
         float y1 = vertex0.position.y; // Axis in height
         float z1 = vertex0.position.z; // Z Depth
@@ -916,9 +1282,6 @@ void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVer
         float x2 = vertex1.position.x; // Axis in width
         float y2 = vertex1.position.y; // Axis in height
         float z2 = vertex1.position.z; // Z Depth
-
-        // Calculate length of line in 3D space
-        float lineLength;
 
         int r1 = vertex0.colour.red;
         int g1 = vertex0.colour.green;
@@ -928,21 +1291,15 @@ void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVer
         int g2 = vertex1.colour.green;
         int b2 = vertex1.colour.blue;
 
+        // // Calculate length of line in 3D space
+        // float lineLength;
 
         float x = 0, y = 0;
         float xDif=x1-x2,yDif=y1-y2;
         float steps = sqrt(pow(x2-x1,2)+pow(y2-y1,2));   // Distance between points
         float m = (y2 - y1) / (x2 - x1);                 // Gradiant
 
-        std::cout << "m: "<< m << vertex0 << std::endl;
-
-
         for (float i = 0; i < steps; i++) {
-
-            // Iterate over a square around the point
-            int lineWidthH = lineWidth*.5;
-            int lineWidthX = 1;
-            int lineWidthY = 1;
 
             if (m){ // Line is Diagonal or Vertical
                 y = (yDif*(i/steps)) + y2;
@@ -951,6 +1308,19 @@ void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVer
                 y = y1;
                 x = xDif*(i/steps) + x2;
             }
+
+            /*
+                In order to impliment the line width, we take the gradient of
+                the line being drawn, and use this to decide the axis in which
+                we draw the line width.
+
+                If graidant(m)<-1 or graidant(m)>1
+                    draw line width in the x
+                else
+                    draw line width in the y
+            */
+            int lineWidthX = 1; // De
+            int lineWidthY = 1; // De
 
             if (m<-1 || m >1){ // Check gradiant for line width
                 lineWidthX = lineWidth;
@@ -967,11 +1337,18 @@ void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVer
             colour.green = (g1>g2) ? ((g1-g2)*stepRatio)+g2 : ((g2-g1)*stepRatio2)+g1;
             colour.blue  = (b1>b2) ? ((b1-b2)*stepRatio)+b2 : ((b2-b1)*stepRatio2)+b1;
 
+            // Similar to rasterise point, however, instead of drawing a square
+            // (iterating over X AND Y) to get a point of size, this time we
+            // only iterate over either the X OR Y (depending on gradient) to
+            // get a line of width.
+
+            int lineWidthH = lineWidth*.5;
+
             for (int xOffset = 0; xOffset < lineWidthX; xOffset++)
             {
                 for (int yOffset = 0; yOffset < lineWidthY; yOffset++)
                 {
-                    // Convert point to point in the square
+                    // Convert point to point in the line
                     int x3 = xOffset + x - lineWidthH;
                     int y3 = yOffset + y - lineWidthH;
 
@@ -992,22 +1369,6 @@ void FakeGL::RasteriseLineSegment(screenVertexWithAttributes &vertex0, screenVer
                     }
                 }
             }
-
-            /*
-                This would need to be modified to draw a line
-
-                NOTE TO SELF:
-                    The way we are probably expecded to do is by drawing multiple single width lines in parallel
-                    to one another to create one thick line of an expected length. This can be done rather easily
-                    by making some modifications to the starting algorithm.
-
-                    Optionally, we could keep the code we have now and find a way to make it draw a line at a 180
-                    degree angle to the current line at each point. That sounds a little messy, so consider this.
-                    A width of 5 would just mean drawing 5 lines of size 1 on either side of one another just
-                    one cell apart. My line code here is already perfect for stopping tearing so that shouldn't
-                    be an issue. TEST IT! TRY IT! DO IT!
-
-            */
 
             // int lineWidthH = lineWidth*.5;
             // for (int xOffset = 0; xOffset < lineWidth; xOffset++)
@@ -1062,7 +1423,6 @@ void FakeGL::RasteriseTriangle(screenVertexWithAttributes &vertex0, screenVertex
     if (vertex2.position.y < minY) minY = vertex2.position.y;
     if (vertex2.position.y > maxY) maxY = vertex2.position.y;
 
-
     // now for each side of the triangle, compute the line vectors
     Cartesian3 vector01 = vertex1.position - vertex0.position;
     Cartesian3 vector12 = vertex2.position - vertex1.position;
@@ -1093,16 +1453,6 @@ void FakeGL::RasteriseTriangle(screenVertexWithAttributes &vertex0, screenVertex
     // create a fragment for reuse
     fragmentWithAttributes rasterFragment;
 
-    // set triangle depthBuffer based on the depth of the triangels center point
-    float triangleDepth = (vertex0.position.z+vertex1.position.z+vertex2.position.z)/3;
-    // std::cout << "Triangle Z:" << std::endl;
-    std::cout << "====================================" << std::endl;
-    std::cout << "triangleDepth: " << triangleDepth << std::endl;
-    std::cout <<  vertex0 << std::endl;
-    std::cout <<  vertex1 << std::endl;
-    std::cout <<  vertex2 << std::endl;
-    // std::cout << rasterFragment.z << std::endl;
-
     // loop through the pixels in the bounding box
     for (rasterFragment.row = minY; rasterFragment.row <= maxY; rasterFragment.row++)
         { // per row
@@ -1131,6 +1481,10 @@ void FakeGL::RasteriseTriangle(screenVertexWithAttributes &vertex0, screenVertex
             // compute colour
             rasterFragment.colour = alpha * vertex0.colour + beta * vertex1.colour + gamma * vertex2.colour;
 
+            // USE BARYCENTRIC COORDINATES TO CALCULATE Z VALUE
+            // set triangle depthBuffer based on the depth of the triangels center point
+            float triangleDepth =  alpha * vertex0.position.z + beta * vertex1.position.z + gamma * vertex2.position.z;
+
             // set triangle depth
             rasterFragment.z = triangleDepth;
 
@@ -1149,23 +1503,19 @@ void FakeGL::ProcessFragment()
         fragmentQueue.pop_front();  // Pop the fragment off the queue
 
 
-
-        /* ==== Do Depth Buffering ==== */
+        // ==== Do Depth Buffering ====
         // Note: depthBuffer is a second RGBAImage in which the alpha stores
         // the depth buffer
 
-        // As the alpha values are clamped between 0 & 255 half all buffers and
-        // add 128 so that it sits within these bounds with headroom
-        currentFragment.z = (currentFragment.z*128)+ 128;
-
+        // As the alpha values are clamped between 0 & 255 multiply through by
+        // 127 and add by 128 so that it sits within these bounds.
+        currentFragment.z = (currentFragment.z*127)+ 128;
 
         // For each fragment,
         // IF fragment Z < the depthBuffer depth && enableDepthTest = true THEN
         if ((currentFragment.z < (float)depthBuffer[currentFragment.row][currentFragment.col].alpha) && enableDepthTest)
         {
             // Discard the fragment
-            // std::cout <<  "Discard Fragment: " << currentFragment.z  << std::endl;
-
             return;
         }
             else
@@ -1179,9 +1529,6 @@ void FakeGL::ProcessFragment()
             depthBuffer[currentFragment.row][currentFragment.col] = bufferColour;
 
         }
-
-
-
     } // ProcessFragment()
 
 // standard routine for dumping the entire FakeGL context (except for texture / image)

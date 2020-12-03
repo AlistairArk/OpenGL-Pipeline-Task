@@ -65,6 +65,7 @@ RenderWindow::RenderWindow
     lightingBox                 = new QCheckBox                 ("Lighting",            this);
     texturedRenderingBox        = new QCheckBox                 ("Textures",            this);
     textureModulationBox        = new QCheckBox                 ("Modulation",          this);
+    phongShadingBox		        = new QCheckBox                 ("Phong Shading",       this);
     
     // modelling options
     showAxesBox                 = new QCheckBox                 ("Axes",                this);  
@@ -97,7 +98,7 @@ RenderWindow::RenderWindow
     // add all of the widgets to the grid               Row         Column      Row Span    Column Span
     
     // the top two widgets have to fit to the widgets stack between them
-    int nStacked = 13;
+    int nStacked = 14;
     
     windowLayout->addWidget(renderWidget,               0,          1,          nStacked,   1           );
     windowLayout->addWidget(yTranslateSlider,           0,          2,          nStacked,   1           );
@@ -118,6 +119,7 @@ RenderWindow::RenderWindow
     windowLayout->addWidget(lightingBox,                10,         3,          1,          1           );
     windowLayout->addWidget(texturedRenderingBox,       11,         3,          1,          1           );
     windowLayout->addWidget(textureModulationBox,       12,         3,          1,          1           );
+    windowLayout->addWidget(phongShadingBox,	 	    13,         3,          1,          1           );
 
     // Translate Slider Row
     windowLayout->addWidget(xTranslateSlider,           nStacked,   1,          1,          1           );
@@ -163,6 +165,7 @@ void RenderWindow::ResetInterface()
     lightingBox             ->setChecked        (renderParameters   ->  useLighting);
     texturedRenderingBox    ->setChecked        (renderParameters   ->  texturedRendering);
     textureModulationBox    ->setChecked        (renderParameters   ->  textureModulation);
+    phongShadingBox		    ->setChecked        (renderParameters   ->  phongShadingOn);
     depthTestBox            ->setChecked        (renderParameters   ->  depthTestOn);
     showAxesBox             ->setChecked        (renderParameters   ->  showAxes);
     showObjectBox           ->setChecked        (renderParameters   ->  showObject);

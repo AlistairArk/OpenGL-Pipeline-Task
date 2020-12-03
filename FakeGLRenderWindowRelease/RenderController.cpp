@@ -111,9 +111,13 @@ RenderController::RenderController
     QObject::connect(   renderWindow->textureModulationBox,         SIGNAL(stateChanged(int)),
                         this,                                       SLOT(textureModulationCheckChanged(int)));
 
-    // signal for check box for Phong shading
+    // signal for check box for depth test
     QObject::connect(   renderWindow->depthTestBox,                 SIGNAL(stateChanged(int)),
                         this,                                       SLOT(depthTestCheckChanged(int)));
+
+    // signal for check box for Phong shading
+    QObject::connect(   renderWindow->phongShadingBox,              SIGNAL(stateChanged(int)),
+                        this,                                       SLOT(phongShadingCheckChanged(int)));
 
     // signal for check box for axes
     QObject::connect(   renderWindow->showAxesBox,                  SIGNAL(stateChanged(int)),
@@ -326,6 +330,16 @@ void RenderController::textureModulationCheckChanged(int state)
     // reset the interface
     renderWindow->ResetInterface();
     } // RenderController::textureModulationCheckChanged()
+    
+// slot for toggling Phong shading
+void RenderController::phongShadingCheckChanged(int state)
+    { // RenderController::phongShadingCheckChanged()
+    // reset the model's flag
+    renderParameters->phongShadingOn = (state == Qt::Checked); 
+
+    // reset the interface
+    renderWindow->ResetInterface();
+    } // RenderController::phongShadingCheckChanged()
     
 // slot for toggling depth test
 void RenderController::depthTestCheckChanged(int state)

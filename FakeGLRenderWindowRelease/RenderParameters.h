@@ -55,6 +55,7 @@ class RenderParameters
     bool texturedRendering;
     bool textureModulation;
     bool depthTestOn;
+    bool phongShadingOn;
     
     bool showAxes;
     bool showObject;
