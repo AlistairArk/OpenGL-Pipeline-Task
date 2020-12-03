@@ -232,6 +232,7 @@ void FakeGL::MultMatrixf(const float *columnMajorCoordinates)
 
         // multiply the current matrix by the one specified in matrixMultMatrix
         matrixCurrent = matrixMultMatrix*matrixCurrent;
+        std::cout << matrixCurrent << std::endl;
 
     } // MultMatrixf()
 
@@ -300,7 +301,6 @@ void FakeGL::Frustum(float left, float right, float bottom, float top, float zNe
 
     matrixCurrent = matrixFrustum;
 
-    PushMatrix();
     } // Frustum()
 
 // sets an orthographic projection matrix
@@ -350,8 +350,6 @@ void FakeGL::Ortho(float left, float right, float bottom, float top, float zNear
         matrixOrtho[0][3] = 0;                matrixOrtho[1][3] = 0;                matrixOrtho[2][3] = 0;                 matrixOrtho[3][3] = 1;
 
         matrixCurrent = matrixOrtho;
-
-        PushMatrix();
 
     } // Ortho()
 
@@ -410,7 +408,6 @@ void FakeGL::Scalef(float xScale, float yScale, float zScale)
 
                Use glPushMatrix() and glPopMatrix() to save and restore the unscaled
                coordinate system.
-
         */
 
         Matrix4 matrixScale;    // Translation Matrix
@@ -422,7 +419,6 @@ void FakeGL::Scalef(float xScale, float yScale, float zScale)
 
         matrixCurrent =  matrixScale*matrixCurrent;
 
-        PushMatrix();
     } // Scalef()
 
 // translate the matrix
@@ -452,8 +448,6 @@ void FakeGL::Translatef(float xTranslate, float yTranslate, float zTranslate)
         matrixTranslate[0][3] = 0; matrixTranslate[1][3] = 0; matrixTranslate[2][3] = 0; matrixTranslate[3][3] = 1;
 
         matrixCurrent =  matrixTranslate*matrixCurrent;
-
-        PushMatrix();
 
     } // Translatef()
 
@@ -493,7 +487,6 @@ void FakeGL::Viewport(int x, int y, int width, int height)
 
         viewportX = xw;
         viewportY = yw;
-
 
     } // Viewport()
 
@@ -772,8 +765,8 @@ void FakeGL::Light(int parameterName, const float *parameterValues)
         switch(parameterName)
         {
             case FAKEGL_POSITION:
-                std::cout << "------------------------------" << std::endl;
-                std::cout << "FAKEGL_POSITION" << std::endl;
+                // std::cout << "------------------------------" << std::endl;
+                // std::cout << "FAKEGL_POSITION" << std::endl;
                 /*
                     params contains four integer or floating-point values that specify
                     the position of the light in homogeneous object coordinates. Both
@@ -786,18 +779,16 @@ void FakeGL::Light(int parameterName, const float *parameterValues)
                 */
                 matrixModelview = matrixStackModelview.front();    // Modelview matrix
 
-                std::cout << "Light Params:" << std::endl;
-                std::cout << parameterValues[0]<< ", " << parameterValues[1]<< ", " << parameterValues[2]<< ", " << parameterValues[3] << std::endl;
+                // std::cout << "Light Params:" << std::endl;
+                // std::cout << parameterValues[0]<< ", " << parameterValues[1]<< ", " << parameterValues[2]<< ", " << parameterValues[3] << std::endl;
                 std::cout << "\nModelview Matrix:" << std::endl;
-                std::cout << matrixModelview << std::endl;
-
-
+                std::cout << matrixCurrent << std::endl;
 
                 // Apply matrix to light position
-                lightPositionValues[0] = (parameterValues[0]*matrixModelview[0][0]) + (parameterValues[1]*matrixModelview[1][0]) + (parameterValues[2]*matrixModelview[2][0]) + (parameterValues[3]*matrixModelview[3][0]);
-                lightPositionValues[1] = (parameterValues[0]*matrixModelview[0][1]) + (parameterValues[1]*matrixModelview[1][1]) + (parameterValues[2]*matrixModelview[2][1]) + (parameterValues[3]*matrixModelview[3][1]);
-                lightPositionValues[2] = (parameterValues[0]*matrixModelview[0][2]) + (parameterValues[1]*matrixModelview[1][2]) + (parameterValues[2]*matrixModelview[2][2]) + (parameterValues[3]*matrixModelview[3][2]);
-                lightPositionValues[3] = (parameterValues[0]*matrixModelview[0][3]) + (parameterValues[1]*matrixModelview[1][3]) + (parameterValues[2]*matrixModelview[2][3]) + (parameterValues[3]*matrixModelview[3][3]);
+                lightPositionValues[0] = (parameterValues[0]*matrixCurrent[0][0]) + (parameterValues[1]*matrixCurrent[1][0]) + (parameterValues[2]*matrixCurrent[2][0]) + (parameterValues[3]*matrixCurrent[3][0]);
+                lightPositionValues[1] = (parameterValues[0]*matrixCurrent[0][1]) + (parameterValues[1]*matrixCurrent[1][1]) + (parameterValues[2]*matrixCurrent[2][1]) + (parameterValues[3]*matrixCurrent[3][1]);
+                lightPositionValues[2] = (parameterValues[0]*matrixCurrent[0][2]) + (parameterValues[1]*matrixCurrent[1][2]) + (parameterValues[2]*matrixCurrent[2][2]) + (parameterValues[3]*matrixCurrent[3][2]);
+                lightPositionValues[3] = (parameterValues[0]*matrixCurrent[0][3]) + (parameterValues[1]*matrixCurrent[1][3]) + (parameterValues[2]*matrixCurrent[2][3]) + (parameterValues[3]*matrixCurrent[3][3]);
 
                 /*
                     If the w component of the position is 0, the light is
@@ -811,8 +802,8 @@ void FakeGL::Light(int parameterName, const float *parameterValues)
                     the - z axis
                 */
 
-                std::cout << "\nPost Matrix Calculation: " << std::endl;
-                std::cout << lightPositionValues[0]<< ", " << lightPositionValues[1]<< ", " << lightPositionValues[2]<< ", " << lightPositionValues[3] << std::endl;
+                // std::cout << "\nPost Matrix Calculation: " << std::endl;
+                // std::cout << lightPositionValues[0]<< ", " << lightPositionValues[1]<< ", " << lightPositionValues[2]<< ", " << lightPositionValues[3] << std::endl;
 
                 // Test the W component of the light position
                 // If it is 0, then you treat what remains as the vector.
@@ -846,8 +837,8 @@ void FakeGL::Light(int parameterName, const float *parameterValues)
                         lights.
                     */
                 }
-                std::cout << "\nPost W Check: " << std::endl;
-                std::cout << lightPositionValues[0]<< ", " << lightPositionValues[1]<< ", " << lightPositionValues[2]<< ", " << lightPositionValues[3] << std::endl;
+                // std::cout << "\nPost W Check: " << std::endl;
+                // std::cout << lightPositionValues[0]<< ", " << lightPositionValues[1]<< ", " << lightPositionValues[2]<< ", " << lightPositionValues[3] << std::endl;
 
                 break;
 
@@ -986,8 +977,8 @@ void FakeGL::TransformVertex()
         // COMPUTE LIGHT
         if (enableLighting)
         {
-            std::cout << "=========================================" << std::endl;
-            std::cout << " ---COMPUTE LIGHT---" << std::endl;
+            // std::cout << "=========================================" << std::endl;
+            // std::cout << " ---COMPUTE LIGHT---" << std::endl;
 
             // store RGBA values of light as they are computed
             // RGBAValue lightColour;
@@ -1017,7 +1008,7 @@ void FakeGL::TransformVertex()
 
                 Simply add on the emission values
             */
-            std::cout << "materialEmissionValues:  (" << materialEmissionValues[0] << ", " << materialEmissionValues[1] << ", " << materialEmissionValues[2] << ", " << materialEmissionValues[3] << ")" << std::endl;
+            // std::cout << "materialEmissionValues:  (" << materialEmissionValues[0] << ", " << materialEmissionValues[1] << ", " << materialEmissionValues[2] << ", " << materialEmissionValues[3] << ")" << std::endl;
 
             r += materialEmissionValues[0];
             g += materialEmissionValues[1];
@@ -1065,9 +1056,9 @@ void FakeGL::TransformVertex()
             // compute n (vector from a vertex on the surface to the position
             // of the light in space)
             vector<float> n = {
-                                lightPositionValues[0]-vertexCurrent.position.x,
-                                lightPositionValues[1]-vertexCurrent.position.y,
-                                lightPositionValues[2]-vertexCurrent.position.z
+                                lightPositionValues[0]-vertexTransformed.position.x,
+                                lightPositionValues[1]-vertexTransformed.position.y,
+                                lightPositionValues[2]-vertexTransformed.position.z
                               };
             // compute the base normal of n
             float nBaseNormal = sqrt( pow(n[0],2) + pow(n[1],2) + pow(n[2],2) );
@@ -1087,8 +1078,10 @@ void FakeGL::TransformVertex()
             // std::cout << "nNormalised:  (" << nNormalised[0]  << ", " << nNormalised[1]  << ", " << nNormalised[2]  << ")" << std::endl;
 
             // compute dot product n & vl
-            float diffuseAngle = ( (nNormalised[0]*vlNormalised[0]) + (nNormalised[1]*vlNormalised[1]) + (nNormalised[2]*vlNormalised[2]));
-            std::cout << "diffuseAngle: " << diffuseAngle << std::endl;
+            float diffuseAngle = 1 - ( (nNormalised[0]*vlNormalised[0]) + (nNormalised[1]*vlNormalised[1]) + (nNormalised[2]*vlNormalised[2]));
+            // float diffuseAngle = -1 * ((n[0]*vl[0]) + (n[1]*vl[1]) + (n[2]*vl[2]));
+            // std::cout << "diffuseAngle: " << diffuseAngle << std::endl;
+            if (diffuseAngle < 0) diffuseAngle = 0;
 
             r += lightDiffuseValues[0] * materialDiffuseValues[0] * diffuseAngle;
             g += lightDiffuseValues[1] * materialDiffuseValues[1] * diffuseAngle;
